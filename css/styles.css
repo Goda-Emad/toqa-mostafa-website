@@ -1504,10 +1504,13 @@ button {
   .btn-open:hover { transform: none; }
 }
 
-/* ── Reduced motion ─────────────────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after {
+/* ── Calm mode (data-motion="off", visitor-controlled) ──────────────────── */
+html[data-motion="off"] {
+  scroll-behavior: auto;
+}
+html[data-motion="off"] *:not(html),
+html[data-motion="off"] *::before,
+html[data-motion="off"] *::after {
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
@@ -1518,7 +1521,6 @@ button {
   .heart, .btn-open__glow, .final__stars, .eq i, .ornament__diamond { animation: none !important; }
   .btn-open__glow { opacity: .22; }
   .scroll-cue__line i { display: none; }
-}
 
 /* Force-visible reveal when JS is broken but motion allowed */
 @media (prefers-reduced-data: reduce) {

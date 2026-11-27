@@ -11,9 +11,16 @@
 (function () {
   "use strict";
 
-  var reduceMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var root = document.documentElement;
   var fineMQ = window.matchMedia("(hover: hover) and (pointer: fine)");
   var tabHidden = false;
+
+  /* Motion is ON by default so the gift always plays; the visitor can calm it
+     down with the motion toggle (saved in localStorage). The OS reduced-motion
+     hint alone no longer switches the whole experience off. */
+  function motionOff() {
+    return root.getAttribute("data-motion") === "off";
+  }
 
   document.addEventListener("visibilitychange", function () {
     tabHidden = document.hidden;
@@ -169,7 +176,7 @@
       sway: this.rand(0.5, 1.4),
       rot: this.rand(0, Math.PI * 2),
       vr: this.rand(-0.014, 0.014),
-      s: this.rand(0.42, 0.95),
+      s: this.rand(0.5, 1.08),
       a: this.rand(0.5, 0.92),
       sp: this.pick(SPR.petals)
     };
@@ -307,7 +314,7 @@
       x.fill();
     }
 
-    if (this.running && !tabHidden && !reduceMQ.matches) {
+    if (this.running && !tabHidden && !motionOff()) {
       this.raf = requestAnimationFrame(this.boundFrame);
     } else {
       this.raf = 0;
@@ -316,7 +323,7 @@
   };
 
   Field.prototype.start = function () {
-    if (!this.c || !this.x || reduceMQ.matches) return;
+    if (!this.c || !this.x || motionOff()) return;
     if (!this.ready) {
       this.resize();
       this.seed();
@@ -356,7 +363,7 @@
   var SPARK_COLORS = ["#f4dcab", "#ecc098", "#f6e7c8"];
 
   function spawnBurst(cls, svg, colors, x, y, n, opts) {
-    if (reduceMQ.matches || !n) return;
+    if (motionOff() || !n) return;
     var L = getLayer();
     for (var i = 0; i < n; i++) {
       var el = document.createElement("span");
@@ -388,7 +395,7 @@
   /* ── Cards: gentle float + pointer tilt (fine pointers only) ─────────── */
   function initCards() {
     var cards = [].slice.call(document.querySelectorAll(".card"));
-    if (!cards.length || reduceMQ.matches) return;
+    if (!cards.length || motionOff()) return;
     var hoverFine = fineMQ.matches;
     var small = window.innerWidth < 560;
     var amp = small ? 2.2 : 3.4;
@@ -485,7 +492,7 @@
           if (e.isIntersecting && !seen) {
             seen = true;
             io.disconnect();
-            if (reduceMQ.matches) rose.classList.add("is-bloom");
+            if (motionOff()) rose.classList.add("is-bloom");
             else setTimeout(bloom, 240);
           }
         });
@@ -526,7 +533,7 @@
       if (paper) paper.removeAttribute("aria-hidden");
       if (hint) hint.setAttribute("hidden", "");
       if (replay) replay.removeAttribute("hidden");
-      if (paper && !reduceMQ.matches) {
+      if (paper && !motionOff()) {
         var r = paper.getBoundingClientRect();
         if (r.width) burstSparkles(r.left + r.width * 0.5, Math.max(40, r.top + 40), 8);
       }
@@ -547,7 +554,7 @@
 
     function replayFn() {
       close();
-      window.setTimeout(open, reduceMQ.matches ? 80 : 1350);
+      window.setTimeout(open, motionOff() ? 80 : 1350);
     }
 
     /* The gentle auto-open only starts once the visitor has unlocked the
@@ -561,7 +568,7 @@
 
     function maybe() {
       if (!unlocked || !seen || opened || timer) return;
-      timer = window.setTimeout(open, reduceMQ.matches ? 250 : 4200);
+      timer = window.setTimeout(open, motionOff() ? 250 : 4200);
     }
 
     if (btn) {
@@ -669,7 +676,7 @@
       var meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute("content", t === "dark" ? "#1c0f16" : "#FBF6F1");
       syncButton();
-      if (animate && !reduceMQ.matches) {
+      if (animate && !motionOff()) {
         root.classList.add("theming");
         window.clearTimeout(tTimer);
         tTimer = window.setTimeout(function () { root.classList.remove("theming"); }, 720);
@@ -696,7 +703,7 @@
     ];
     var last = 0;
     window.setInterval(function () {
-      if (tabHidden || reduceMQ.matches || !isPlaying()) return;
+      if (tabHidden || motionOff() || !isPlaying()) return;
       var now = Date.now();
       if (now - last < 1150) return;
       if (host.childElementCount > 6) return;
@@ -751,7 +758,7 @@
   var parallaxItems = [];
   function initParallax() {
     var els = [].slice.call(document.querySelectorAll("[data-parallax]"));
-    if (!els.length || reduceMQ.matches) return;
+    if (!els.length || motionOff()) return;
     parallaxItems = els.map(function (el) {
       return { el: el, f: parseFloat(el.getAttribute("data-parallax")) || 0.05, base: 0, h: 1 };
     });
@@ -803,7 +810,28 @@
     initParallax: initParallax,
     runParallax: runParallax,
     remeasureParallax: measure,
-    reduceMQ: reduceMQ,
+    motionOff: motionOff,
+    setMotion: setMotion,
+    initMotion: initMotion,
     fineMQ: fineMQ
   };
+
+  /* ── Motion toggle ───────────────────────────────────────────────────── */
+  function setMotion(off) {
+    if (off) root.setAttribute("data-motion", "off");
+    else root.removeAttribute("data-motion");
+    try { window.localStorage.setItem("toqa-motion", off ? "off" : "on"); } catch (e) {}
+    syncMotionButton();
+    return motionOff();
+  }
+
+  function syncMotionButton() {
+    var btn = document.getElementById("motionBtn");
+    if (!btn) return;
+    var off = motionOff();
+    btn.setAttribute("aria-pressed", off ? "true" : "false");
+    btn.setAttribute("aria-label", off ? "تشغيل حركة الموقع" : "تقليل حركة الموقع");
+  }
+
+  function initMotion() { syncMotionButton(); }
 })();

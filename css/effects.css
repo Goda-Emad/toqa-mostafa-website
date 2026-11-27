@@ -357,6 +357,9 @@
 .icon-btn .i-sun { display: none; }
 html[data-theme="dark"] .icon-btn .i-sun { display: block; }
 html[data-theme="dark"] .icon-btn .i-moon { display: none; }
+.icon-btn .i-motion-off { display: none; }
+html[data-motion="off"] .icon-btn .i-motion-off { display: block; }
+html[data-motion="off"] .icon-btn .i-motion { display: none; }
 .icon-btn--desktop { display: none; }
 @media (min-width: 781px) {
   .icon-btn--desktop { display: grid; }
@@ -565,7 +568,14 @@ html[data-theme="dark"] .icon-btn .i-moon { display: none; }
   grid-template-rows: 0fr;
   transition: grid-template-rows 1.15s var(--ease-out) 1.05s;
 }
-.letter__paperwrap > .letter__paper { min-height: 0; overflow: hidden; }
+/* The clip lives on a wrapper so the wax seal can still overlap the paper's
+   top edge; the wrapper's top padding reserves room for that overhang. */
+.letter__paperclip {
+  min-height: 0;
+  overflow: hidden;
+  padding-block-start: 1.8rem;
+  padding-block-end: 1.4rem;
+}
 .letter__stage.is-open .letter__paperwrap { grid-template-rows: 1fr; }
 
 .letter__paper {
@@ -872,8 +882,8 @@ html.theming *::after {
     stop-color .55s var(--ease-soft), opacity .55s var(--ease-soft) !important;
 }
 
-/* ── 11. Reduced motion & no-JS ────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
+/* ── 11. Calm mode (data-motion="off") & no-JS ─────────────────────────── */
+html[data-motion="off"] {
   .ambient__dust,
   .gate__dust { display: none !important; }
   .gift, .gift__glow { animation: none !important; }

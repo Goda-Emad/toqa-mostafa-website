@@ -29,8 +29,6 @@
   var musicStatus = document.getElementById("musicStatus");
   var toastEl = document.getElementById("toast");
 
-  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  var prefersReduced = reduceMotion.matches;
 
   var TARGET_VOLUME = 0.55;
   var hasOpened = false;
@@ -191,16 +189,23 @@
   var letterCtl = null;
 
   if (FX) {
-    FX.initCards();
-    FX.initRose();
-    FX.initSecrets(FX.burstHearts, FX.burstSparkles);
-    FX.initShare(showToast);
-    FX.initTheme();
-    FX.initNotes(function () {
-      return player && player.dataset.state === "playing";
+    [function () { FX.initCards(); },
+     function () { FX.initRose(); },
+     function () { FX.initSecrets(FX.burstHearts, FX.burstSparkles); },
+     function () { FX.initShare(showToast); },
+     function () { FX.initTheme(); },
+     function () { FX.initNotes(function () {
+        return player && player.dataset.state === "playing";
+     }); },
+     function () { FX.initParallax(); },
+     function () { FX.initMotion(); },
+     function () { letterCtl = FX.initLetter(); }
+    ].forEach(function (step) {
+      try { step(); }
+      catch (err) {
+        if (window.console && console.warn) console.warn("[fx] step failed:", err);
+      }
     });
-    FX.initParallax();
-    letterCtl = FX.initLetter();
 
     gateField = new FX.Field(document.getElementById("gateDust"), {
       fill: "element",
@@ -215,9 +220,9 @@
     mainField = new FX.Field(document.getElementById("dust"), {
       fill: "viewport",
       counts: {
-        small:  { petals: 6, hearts: 4, sparkles: 9, dust: 16 },
-        medium: { petals: 9, hearts: 6, sparkles: 13, dust: 26 },
-        large:  { petals: 13, hearts: 8, sparkles: 18, dust: 40 }
+        small:  { petals: 8, hearts: 5, sparkles: 10, dust: 16 },
+        medium: { petals: 12, hearts: 7, sparkles: 14, dust: 26 },
+        large:  { petals: 17, hearts: 9, sparkles: 19, dust: 40 }
       }
     });
     FX.fields.push(mainField);
@@ -239,7 +244,7 @@
     });
 
     // The gate is alive from the first paint.
-    if (!prefersReduced) gateField.start();
+    if (!FX.motionOff()) gateField.start();
   }
 
   /* ── Opening sequence ────────────────────────────────────────────────── */
@@ -276,7 +281,7 @@
     // Music starts with the click: this handler is the user gesture.
     playMusic(true);
 
-    if (prefersReduced || !FX) {
+    if (FX.motionOff() || !FX) {
       window.setTimeout(unlockExperience, 160);
       return;
     }
@@ -377,13 +382,13 @@
     }
     if (masthead) {
       masthead.classList.toggle("is-stuck", y > 18);
-      if (!prefersReduced) {
+      if (!FX.motionOff()) {
         masthead.style.transform = y > 140 && y > lastScroll
           ? "translateY(-102%)"
           : "translateY(0)";
       }
     }
-    if (FX && !prefersReduced) FX.runParallax();
+    if (FX && !FX.motionOff()) FX.runParallax();
     lastScroll = y;
     ticking = false;
   }
@@ -434,18 +439,18 @@
     }
   });
 
-  /* ── Reduced-motion switch ───────────────────────────────────────────── */
-  if (reduceMotion && reduceMotion.addEventListener) {
-    reduceMotion.addEventListener("change", function (e) {
-      prefersReduced = e.matches;
-      if (prefersReduced) {
+  /* ── Motion toggle ───────────────────────────────────────────────────── */
+  var motionBtn = document.getElementById("motionBtn");
+  if (motionBtn) {
+    motionBtn.addEventListener("click", function () {
+      var nowOff = FX.setMotion(!FX.motionOff());
+      if (nowOff) {
         FX.fields.forEach(function (f) { f.stop(); });
       } else {
         if (gate && !gate.classList.contains("is-gone")) gateField.start();
         if (hasOpened) mainField.start();
         FX.remeasureParallax();
       }
-      revealVisible();
     });
   }
 
@@ -467,7 +472,7 @@
   }
 
   /* ── Init ────────────────────────────────────────────────────────────── */
-  if (prefersReduced) {
+  if (FX.motionOff()) {
     allRevealables.forEach(function (el) { el.classList.add("is-in"); });
   } else if (gate) {
     revealGate();
