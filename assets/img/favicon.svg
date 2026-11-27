@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="تقى مصطفى">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFAF5"/>
+      <stop offset="1" stop-color="#F6E3DD"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E7C3A6"/>
+      <stop offset=".5" stop-color="#C08A6E"/>
+      <stop offset="1" stop-color="#A66E52"/>
+    </linearGradient>
+    <linearGradient id="wine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6A2C3A"/>
+      <stop offset="1" stop-color="#451A26"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <rect x=".75" y=".75" width="62.5" height="62.5" rx="13.25" fill="none" stroke="#C08A6E" stroke-opacity=".45"/>
+  <path d="M14 50V30a18 18 0 0 1 36 0v20Z" fill="none" stroke="url(#gold)" stroke-width="1.2" opacity=".8"/>
+  <path d="M32 42.5s-7.6-4.8-7.6-10a4.4 4.4 0 0 1 7.6-2.9 4.4 4.4 0 0 1 7.6 2.9c0 5.2-7.6 10-7.6 10Z" fill="url(#wine)"/>
+  <circle cx="32" cy="17.5" r="1.2" fill="#C08A6E" opacity=".8"/>
+</svg>
