@@ -55,6 +55,12 @@
   }
 
   /* ── Audio ───────────────────────────────────────────────────────────── */
+  var audioFailed = false;
+  var audioFailures = 0;
+  var everPlayed = false;
+  var userPaused = false;
+  var gestureArmed = false;
+
   function fadeTo(target, ms) {
     if (volumeRamp) window.clearInterval(volumeRamp);
     var start = audio.volume;
@@ -93,7 +99,9 @@
   }
 
   function markAudioFailed(error) {
+    if (audioFailed) return;
     audioFailed = true;
+    audioFailures += 1;
     setPlayerState("error", "غير متاحة", "الموسيقى غير متاحة الآن. بقية الصفحة تعمل.");
     if (gateHint) gateHint.textContent = "الموسيقى غير متاحة الآن — يمكنك متابعة التصفح بهدوء";
     showToast(describeAudioError() + " بقية الصفحة تعمل بشكل طبيعي.", 7000);
@@ -102,39 +110,94 @@
     }
   }
 
+  /* Second chance: reload the file and play as soon as it is ready. */
+  function recoverAudio() {
+    audioFailed = false;
+    setPlayerState("paused", "جارٍ إعادة المحاولة", "جارٍ إعادة محاولة تشغيل الموسيقى");
+    try { audio.load(); } catch (e) {}
+    var onReady = function () {
+      audio.removeEventListener("canplay", onReady);
+      playMusic(true);
+    };
+    audio.addEventListener("canplay", onReady);
+    window.setTimeout(function () {
+      audio.removeEventListener("canplay", onReady);
+    }, 9000);
+  }
+
+  /* If a browser refuses the first play(), the very next tap anywhere starts
+     the music — the visitor never has to find the header button. */
+  function armNextGesture() {
+    if (gestureArmed || !hasOpened) return;
+    gestureArmed = true;
+    var retry = function () {
+      document.removeEventListener("pointerdown", retry);
+      document.removeEventListener("touchstart", retry);
+      document.removeEventListener("keydown", retry);
+      gestureArmed = false;
+      if (audio.paused && !audioFailed) playMusic(false);
+    };
+    document.addEventListener("pointerdown", retry);
+    document.addEventListener("touchstart", retry);
+    document.addEventListener("keydown", retry);
+  }
+
+  function handlePlayFailure(err) {
+    if (err && err.name === "NotAllowedError") {
+      setPlayerState("paused", "اضغطي للتشغيل", "اضغطي زر الموسيقى لبدء التشغيل");
+      musicBtn.setAttribute("aria-pressed", "false");
+      armNextGesture();
+      return;
+    }
+    if (err && err.name === "AbortError") {
+      window.setTimeout(function () {
+        if (audio.paused && !audioFailed) playMusic(false);
+      }, 450);
+      return;
+    }
+    markAudioFailed(err);
+  }
+
   function playMusic(announce) {
     if (!audio || audioFailed) return;
+    userPaused = false;
+    audio.muted = false;
     var attempt;
     try {
       audio.volume = 0;
       attempt = audio.play();
     } catch (err) {
-      markAudioFailed(err);
+      handlePlayFailure(err);
       return;
     }
-    if (attempt && typeof attempt.then === "function") {
-      attempt.then(function () {
-        fadeTo(TARGET_VOLUME, 1600);
-        setPlayerState("playing", "تُعزف الآن", announce ? "الموسيقى تُعزف الآن" : "");
-        musicBtn.setAttribute("aria-pressed", "true");
-        musicBtn.setAttribute("aria-label", "إيقاف الموسيقى مؤقتًا");
-      }).catch(function (err) {
-        if (err && err.name === "NotAllowedError") {
-          setPlayerState("paused", "اضغطي للتشغيل", "الموسيقى بانتظار الضغط على زر التشغيل");
-          musicBtn.setAttribute("aria-pressed", "false");
-          return;
-        }
-        markAudioFailed(err);
-      });
-    } else {
+    var started = function () {
       fadeTo(TARGET_VOLUME, 1600);
       setPlayerState("playing", "تُعزف الآن", announce ? "الموسيقى تُعزف الآن" : "");
       musicBtn.setAttribute("aria-pressed", "true");
+      musicBtn.setAttribute("aria-label", "إيقاف الموسيقى مؤقتًا");
+    };
+    if (attempt && typeof attempt.then === "function") {
+      attempt.then(started).catch(handlePlayFailure);
+    } else {
+      started();
     }
+
+    /* Watchdog: never leave the visitor in silent limbo. */
+    window.setTimeout(function () {
+      if (audioFailed || userPaused || !audio.paused) return;
+      if (audio.readyState < 3) {
+        setPlayerState("paused", "جارٍ تحميل الموسيقى…", "الموسيقى بتتحمل — جربي تاني بعد لحظات");
+      } else {
+        setPlayerState("paused", "اضغطي للتشغيل", "اضغطي زر الموسيقى لبدء التشغيل");
+        musicBtn.setAttribute("aria-pressed", "false");
+        armNextGesture();
+      }
+    }, 3400);
   }
 
   function pauseMusic(announce) {
     if (!audio || audioFailed) return;
+    userPaused = true;
     audio.pause();
     setPlayerState("paused", "متوقفة", announce ? "الموسيقى متوقفة" : "");
     musicBtn.setAttribute("aria-pressed", "false");
@@ -144,7 +207,7 @@
   function toggleMusic() {
     if (!audio) return;
     if (audioFailed) {
-      showToast(describeAudioError() + " يمكنك متابعة الصفحة، الموسيقى اختيارية.", 6000);
+      recoverAudio();
       return;
     }
     if (audio.paused) {
@@ -157,27 +220,30 @@
   if (audio) {
     audio.volume = 0;
     audio.addEventListener("error", function () {
-      if (!audioFailed) markAudioFailed(audio.error);
-    });
-    audio.addEventListener("stalled", function () {
-      if (hasOpened && audio.paused && !audioFailed) {
-        setPlayerState("paused", "جارٍ التحميل", "");
-      }
+      if (!audio.error || audioFailed || audioFailures > 2) return;
+      markAudioFailed(audio.error);
     });
     audio.addEventListener("playing", function () {
+      everPlayed = true;
+      player.classList.remove("player--invite");
       setPlayerState("playing", "تُعزف الآن", "");
       musicBtn.setAttribute("aria-pressed", "true");
+      musicBtn.setAttribute("aria-label", "إيقاف الموسيقى مؤقتًا");
     });
     audio.addEventListener("pause", function () {
-      if (!audioFailed) {
+      if (!audioFailed && !userPaused) {
         setPlayerState("paused", "متوقفة", "");
         musicBtn.setAttribute("aria-pressed", "false");
       }
     });
     audio.addEventListener("timeupdate", function () {
       if (!audio.duration) return;
-      var pct = (audio.currentTime / audio.duration) * 100;
-      musicBtn.style.setProperty("--p", pct.toFixed(1));
+      musicBtn.style.setProperty("--p", ((audio.currentTime / audio.duration) * 100).toFixed(1));
+      /* Safety net: if the fade-in died (throttled tab, interrupted interval)
+         the track would play in silence — restore an audible volume. */
+      if (!audio.paused && !volumeRamp && audio.volume < 0.04) {
+        audio.volume = TARGET_VOLUME;
+      }
     });
   }
 
@@ -264,6 +330,7 @@
 
     hasOpened = true;
     opening = false;
+    if (!everPlayed && player) player.classList.add("player--invite");
     observeExperience();
     revealVisible();
     if (mainField) mainField.start();
