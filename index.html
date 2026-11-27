@@ -21,15 +21,34 @@
   <link rel="preload" href="./assets/fonts/ArefRuqaa-700-normal-arabic.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./assets/fonts/Amiri-400-normal-arabic.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./css/styles.css">
+  <link rel="stylesheet" href="./css/effects.css">
   <script>document.documentElement.classList.remove('no-js');</script>
+  <script>
+    /* Restore the visitor's theme before first paint to avoid a flash. */
+    (function () {
+      try {
+        if (localStorage.getItem('toqa-theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <noscript>
     <style>
       .gate { display: none !important; }
       .experience { opacity: 1 !important; }
       body { overflow: auto !important; height: auto !important; }
       .reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
-      .player, .progress, .toast { display: none !important; }
-      .gate__hint { display: none !important; }
+      .player, .progress, .toast, .icon-btn, .masthead__tools { display: none !important; }
+      .gate__hint, .gate__gift, .gate__reveal, .secret__btn { display: none !important; }
+      .letter__envwrap { display: none !important; }
+      .letter__paperwrap { grid-template-rows: 1fr !important; }
+      .letter__paper { opacity: 1 !important; transform: none !important; }
+      .letter__paper .letter__head,
+      .letter__paper .letter__body > p,
+      .letter__paper .letter__sign { opacity: 1 !important; transform: none !important; }
+      .rose .petal { opacity: 1 !important; transform: none !important; }
+      .rose__glow { opacity: .75 !important; }
     </style>
   </noscript>
 </head>
@@ -48,6 +67,7 @@
 
   <!-- ───────────────────────── Opening screen ───────────────────────── -->
   <section class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title" aria-describedby="gate-sub">
+    <canvas class="gate__dust" id="gateDust" aria-hidden="true"></canvas>
     <div class="gate__frame" aria-hidden="true"></div>
 
     <div class="gate__inner">
@@ -57,16 +77,34 @@
         <span class="rule" aria-hidden="true"></span>
       </p>
 
-      <h1 class="gate__title reveal" id="gate-title" style="--delay:220ms">
+      <div class="gate__gift reveal" style="--delay:200ms">
+        <div class="gift" id="giftBox" aria-hidden="true">
+          <span class="gift__glow"></span>
+          <span class="gift__letter"></span>
+          <span class="gift__pocket"></span>
+          <span class="gift__flap"></span>
+          <span class="gift__seal">
+            <svg viewBox="0 0 32 30" aria-hidden="true" focusable="false"><path d="M16 27S2.7 18.7 2.7 10.9A6.9 6.9 0 0 1 16 7a6.9 6.9 0 0 1 13.3 3.9C29.3 18.7 16 27 16 27Z" fill="currentColor"/></svg>
+          </span>
+          <span class="gift__shadow"></span>
+        </div>
+      </div>
+
+      <h1 class="gate__title reveal" id="gate-title" style="--delay:340ms">
         إلى تقى مصطفى
         <span class="gate__heart" aria-hidden="true">
           <svg class="heart heart--svg" viewBox="0 0 32 30" focusable="false"><path d="M16 27S2.7 18.7 2.7 10.9A6.9 6.9 0 0 1 16 7a6.9 6.9 0 0 1 13.3 3.9C29.3 18.7 16 27 16 27Z" fill="currentColor"/></svg>
         </span>
       </h1>
 
-      <p class="gate__sub reveal" id="gate-sub" style="--delay:420ms">هناك أشخاص لا يشبهون أحدًا...</p>
+      <p class="gate__sub reveal" id="gate-sub" style="--delay:460ms">هناك أشخاص لا يشبهون أحدًا...</p>
 
-      <div class="gate__ornament reveal" style="--delay:560ms" aria-hidden="true">
+      <p class="gate__reveal" id="gateReveal">
+        <span class="w">وأنتِ</span>
+        <span class="w">أجملهم.</span>
+      </p>
+
+      <div class="gate__ornament reveal" style="--delay:580ms" aria-hidden="true">
         <span class="ornament__line"></span>
         <svg class="ornament__diamond" viewBox="0 0 24 24" width="18" height="18" focusable="false">
           <path d="M12 1.5 22.5 12 12 22.5 1.5 12Z" fill="none" stroke="currentColor" stroke-width="1"/>
@@ -75,7 +113,7 @@
         <span class="ornament__line"></span>
       </div>
 
-      <button class="btn-open reveal" id="openGift" type="button" style="--delay:700ms">
+      <button class="btn-open reveal" id="openGift" type="button" style="--delay:720ms">
         <span class="btn-open__glow" aria-hidden="true"></span>
         <span class="btn-open__label">افتحي هديتك</span>
         <svg class="btn-open__icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
@@ -83,7 +121,7 @@
         </svg>
       </button>
 
-      <p class="gate__hint reveal" id="gate-hint" style="--delay:860ms">
+      <p class="gate__hint reveal" id="gate-hint" style="--delay:880ms">
         تُشغَّل الموسيقى مع الافتتاح &nbsp;·&nbsp; يُفضّل سماعها بهدوء
       </p>
 
@@ -107,8 +145,29 @@
           <a href="#final">الختام</a>
         </nav>
 
+        <div class="masthead__tools">
+          <button class="icon-btn theme-btn" id="themeBtn" type="button" aria-pressed="false" aria-label="التبديل إلى الوضع الليلي">
+            <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M20.2 14.6A8.3 8.3 0 0 1 9.4 3.8a.7.7 0 0 0-.9-.9 9.6 9.6 0 1 0 12.6 12.6.7.7 0 0 0-.9-.9Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            </svg>
+            <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="4.1" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="icon-btn share-btn icon-btn--desktop" data-share type="button" aria-label="شاركي صفحة الهدية">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="6" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <circle cx="17.5" cy="5.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <circle cx="17.5" cy="18.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <path d="m8.3 10.8 6.9-4M8.3 13.2l6.9 4" stroke="currentColor" stroke-width="1.4"/>
+            </svg>
+          </button>
+        </div>
+
         <div class="player" id="player" data-state="paused">
           <button class="player__btn" id="musicToggle" type="button" aria-pressed="false" aria-label="تشغيل الموسيقى">
+            <span class="player__ring" aria-hidden="true"></span>
             <svg class="player__icon player__icon--play" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
               <path d="M8 4.8v14.4L19.5 12Z" fill="currentColor"/>
             </svg>
@@ -117,6 +176,8 @@
               <rect x="13.8" y="4.6" width="3.6" height="14.8" rx=".6" fill="currentColor"/>
             </svg>
           </button>
+
+          <span class="player__notes" id="playerNotes" aria-hidden="true"></span>
 
           <span class="player__eq eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
 
@@ -162,44 +223,44 @@
           <svg class="art-scene" viewBox="0 0 420 520" preserveAspectRatio="xMidYMid slice" role="presentation" focusable="false">
             <defs>
               <linearGradient id="sky" x1="0" y1="0" x2=".2" y2="1">
-                <stop offset="0" stop-color="#FFFAF5"/>
-                <stop offset=".34" stop-color="#FBEAE3"/>
-                <stop offset=".66" stop-color="#F1D8D5"/>
-                <stop offset="1" stop-color="#DFC6D4"/>
+                <stop offset="0" class="st-sky1"/>
+                <stop offset=".34" class="st-sky2"/>
+                <stop offset=".66" class="st-sky3"/>
+                <stop offset="1" class="st-sky4"/>
               </linearGradient>
               <radialGradient id="horizon" cx="50%" cy="100%" r="72%">
-                <stop offset="0" stop-color="#F6D3B6" stop-opacity=".85"/>
-                <stop offset=".6" stop-color="#E9BBA6" stop-opacity=".28"/>
-                <stop offset="1" stop-color="#E9BBA6" stop-opacity="0"/>
+                <stop offset="0" class="st-hor1" stop-opacity=".85"/>
+                <stop offset=".6" class="st-hor2" stop-opacity=".28"/>
+                <stop offset="1" class="st-hor2" stop-opacity="0"/>
               </radialGradient>
               <radialGradient id="halo" cx="50%" cy="50%" r="50%">
-                <stop offset="0" stop-color="#FFF3E2" stop-opacity=".9"/>
-                <stop offset=".42" stop-color="#F5CDAE" stop-opacity=".55"/>
-                <stop offset="1" stop-color="#DFA98F" stop-opacity="0"/>
+                <stop offset="0" class="st-halo1" stop-opacity=".9"/>
+                <stop offset=".42" class="st-halo2" stop-opacity=".55"/>
+                <stop offset="1" class="st-halo3" stop-opacity="0"/>
               </radialGradient>
               <linearGradient id="sunCore" x1=".2" y1="0" x2=".8" y2="1">
-                <stop offset="0" stop-color="#FFF0DC"/>
-                <stop offset=".38" stop-color="#F6D3B2"/>
-                <stop offset=".78" stop-color="#DCA189"/>
-                <stop offset="1" stop-color="#BE7F72"/>
+                <stop offset="0" class="st-sun1"/>
+                <stop offset=".38" class="st-sun2"/>
+                <stop offset=".78" class="st-sun3"/>
+                <stop offset="1" class="st-sun4"/>
               </linearGradient>
               <linearGradient id="hillFar" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#DCC0CE" stop-opacity=".62"/>
-                <stop offset="1" stop-color="#C9AABB" stop-opacity=".82"/>
+                <stop offset="0" class="st-hillf1" stop-opacity=".62"/>
+                <stop offset="1" class="st-hillf2" stop-opacity=".82"/>
               </linearGradient>
               <linearGradient id="hillNear" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#C7A2AE" stop-opacity=".72"/>
-                <stop offset="1" stop-color="#A97F8D" stop-opacity=".9"/>
+                <stop offset="0" class="st-hilln1" stop-opacity=".72"/>
+                <stop offset="1" class="st-hilln2" stop-opacity=".9"/>
               </linearGradient>
               <linearGradient id="stemGrad" x1="1" y1="1" x2="0" y2="0">
-                <stop offset="0" stop-color="#6E3A46"/>
-                <stop offset=".55" stop-color="#8C5561"/>
-                <stop offset="1" stop-color="#B0808A"/>
+                <stop offset="0" class="st-stem1"/>
+                <stop offset=".55" class="st-stem2"/>
+                <stop offset="1" class="st-stem3"/>
               </linearGradient>
               <linearGradient id="leafGrad" x1="0" y1="1" x2="1" y2="0">
-                <stop offset="0" stop-color="#B57C6D"/>
-                <stop offset=".55" stop-color="#D6A88E"/>
-                <stop offset="1" stop-color="#EFD2B8"/>
+                <stop offset="0" class="st-leaf1"/>
+                <stop offset=".55" class="st-leaf2"/>
+                <stop offset="1" class="st-leaf3"/>
               </linearGradient>
               <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="18"/>
@@ -309,39 +370,51 @@
 
         <div class="cards">
           <figure class="card reveal" style="--delay:60ms">
-            <span class="card__num" aria-hidden="true">٠١</span>
-            <blockquote class="card__quote">أجمل صدفة ممكن تحصل للإنسان هي إنه يقابل روح جميلة زيك.</blockquote>
-            <span class="card__mark" aria-hidden="true">”</span>
+            <div class="card__inner">
+              <span class="card__num" aria-hidden="true">٠١</span>
+              <blockquote class="card__quote">أجمل صدفة ممكن تحصل للإنسان هي إنه يقابل روح جميلة زيك.</blockquote>
+              <span class="card__mark" aria-hidden="true">”</span>
+            </div>
           </figure>
 
           <figure class="card reveal" style="--delay:140ms">
-            <span class="card__num" aria-hidden="true">٠٢</span>
-            <blockquote class="card__quote">أطيب قلب، وأهدى روح، وأجمل تفاصيل.</blockquote>
-            <span class="card__mark" aria-hidden="true">”</span>
+            <div class="card__inner">
+              <span class="card__num" aria-hidden="true">٠٢</span>
+              <blockquote class="card__quote">أطيب قلب، وأهدى روح، وأجمل تفاصيل.</blockquote>
+              <span class="card__mark" aria-hidden="true">”</span>
+            </div>
           </figure>
 
           <figure class="card reveal" style="--delay:220ms">
-            <span class="card__num" aria-hidden="true">٠٣</span>
-            <blockquote class="card__quote">في أشخاص وجودهم لوحده بيخلّي الدنيا ألطف.</blockquote>
-            <span class="card__mark" aria-hidden="true">”</span>
+            <div class="card__inner">
+              <span class="card__num" aria-hidden="true">٠٣</span>
+              <blockquote class="card__quote">في أشخاص وجودهم لوحده بيخلّي الدنيا ألطف.</blockquote>
+              <span class="card__mark" aria-hidden="true">”</span>
+            </div>
           </figure>
 
           <figure class="card reveal" style="--delay:300ms">
-            <span class="card__num" aria-hidden="true">٠٤</span>
-            <blockquote class="card__quote">مش كل الحاجات الحلوة بتتخطط، بعضها بييجي كصدفة ويصبح أجمل حكاية.</blockquote>
-            <span class="card__mark" aria-hidden="true">”</span>
+            <div class="card__inner">
+              <span class="card__num" aria-hidden="true">٠٤</span>
+              <blockquote class="card__quote">مش كل الحاجات الحلوة بتتخطط، بعضها بييجي كصدفة ويصبح أجمل حكاية.</blockquote>
+              <span class="card__mark" aria-hidden="true">”</span>
+            </div>
           </figure>
 
           <figure class="card reveal" style="--delay:380ms">
-            <span class="card__num" aria-hidden="true">٠٥</span>
-            <blockquote class="card__quote">بعض الأشخاص لهم مكانة لا تحتاج إلى تفسير.</blockquote>
-            <span class="card__mark" aria-hidden="true">”</span>
+            <div class="card__inner">
+              <span class="card__num" aria-hidden="true">٠٥</span>
+              <blockquote class="card__quote">بعض الأشخاص لهم مكانة لا تحتاج إلى تفسير.</blockquote>
+              <span class="card__mark" aria-hidden="true">”</span>
+            </div>
           </figure>
 
           <figure class="card reveal" style="--delay:460ms">
-            <span class="card__num" aria-hidden="true">٠٦</span>
-            <blockquote class="card__quote">وجودك من التفاصيل الجميلة التي تستحق الامتنان.</blockquote>
-            <span class="card__mark" aria-hidden="true">”</span>
+            <div class="card__inner">
+              <span class="card__num" aria-hidden="true">٠٦</span>
+              <blockquote class="card__quote">وجودك من التفاصيل الجميلة التي تستحق الامتنان.</blockquote>
+              <span class="card__mark" aria-hidden="true">”</span>
+            </div>
           </figure>
         </div>
       </div>
@@ -350,37 +423,65 @@
     <!-- ── Letter ── -->
     <section class="letter" id="letter" aria-labelledby="letter-title">
       <div class="shell letter__shell">
-        <p class="letter__aside" aria-hidden="true" dir="ltr" lang="en">A&nbsp;LETTER</p>
+        <p class="letter__aside" data-parallax="0.05" aria-hidden="true" dir="ltr" lang="en">A&nbsp;LETTER</p>
 
-        <article class="letter__paper reveal">
-          <span class="letter__corner letter__corner--tl" aria-hidden="true"></span>
-          <span class="letter__corner letter__corner--tr" aria-hidden="true"></span>
-          <span class="letter__corner letter__corner--bl" aria-hidden="true"></span>
-          <span class="letter__corner letter__corner--br" aria-hidden="true"></span>
-
-          <span class="seal" aria-hidden="true">ت</span>
-
-          <header class="letter__head">
-            <p class="kicker kicker--center">
-              <span class="kicker__num">٠٣</span>
-              <span class="kicker__line" aria-hidden="true"></span>
-              <span>رسالة</span>
-            </p>
-            <h2 class="section-title section-title--sm" id="letter-title">رسالة قصيرة</h2>
-          </header>
-
-          <div class="letter__body">
-            <p class="letter__salutation">إلى تقى،</p>
-            <p>في الأيام المزدحمة تمرّ أسماء كثيرة ولا يبقى منها أثر. لكن بين الحين والحين تصل روح إلى روح، فيصير الكلام أهدأ، والوقت أخفّ. أنتِ من هذه الصدف القليلة التي تُشبه هدوء المساء بعد يوم طويل.</p>
-            <p>هناك فيكِ طيبة لا تُتعب أحدًا، وروح خفيفة تجعل المكان ألطف، وتفاصيل صغيرة ينتبه لها القلب قبل العين. أشياء لا تحتاج إلى شرح، فقط إلى تقدير.</p>
-            <p>لن أعدكِ بشيء أكبر من الصدق: كلمة طيبة، واحترام حاضر، وتقدير صادق، في كل مرة. هذه الصفحة ليست أكثر من هدية صغيرة، لكنها كُتبت بامتنان حقيقي لأنكِ موجودة.</p>
+        <div class="letter__stage" id="letterStage">
+          <div class="letter__envwrap">
+            <div class="letter__env">
+              <button class="env" id="letterEnvBtn" type="button" aria-expanded="false" aria-controls="letterPaper" aria-label="افتحي الرسالة">
+                <span class="env__back" aria-hidden="true"></span>
+                <span class="env__card" aria-hidden="true">
+                  <svg viewBox="0 0 32 30" focusable="false"><path d="M16 27S2.7 18.7 2.7 10.9A6.9 6.9 0 0 1 16 7a6.9 6.9 0 0 1 13.3 3.9C29.3 18.7 16 27 16 27Z" fill="currentColor"/></svg>
+                </span>
+                <span class="env__front" aria-hidden="true"></span>
+                <span class="env__flap" aria-hidden="true"></span>
+                <span class="env__seal" aria-hidden="true">ت</span>
+              </button>
+              <p class="letter__hint" id="letterHint">اضغطي على الظرف لفتح الرسالة</p>
+            </div>
           </div>
 
-          <p class="letter__sign">
-            <span>بكل الامتنان</span>
-            <span class="letter__sign-rule" aria-hidden="true"></span>
-          </p>
-        </article>
+          <div class="letter__paperwrap">
+            <article class="letter__paper" id="letterPaper" aria-hidden="true">
+              <span class="letter__corner letter__corner--tl" aria-hidden="true"></span>
+              <span class="letter__corner letter__corner--tr" aria-hidden="true"></span>
+              <span class="letter__corner letter__corner--bl" aria-hidden="true"></span>
+              <span class="letter__corner letter__corner--br" aria-hidden="true"></span>
+
+              <span class="seal" aria-hidden="true">ت</span>
+
+              <header class="letter__head">
+                <p class="kicker kicker--center">
+                  <span class="kicker__num">٠٣</span>
+                  <span class="kicker__line" aria-hidden="true"></span>
+                  <span>رسالة</span>
+                </p>
+                <h2 class="section-title section-title--sm" id="letter-title">رسالة قصيرة</h2>
+              </header>
+
+              <div class="letter__body">
+                <p class="letter__salutation">إلى تقى،</p>
+                <p>في الأيام المزدحمة تمرّ أسماء كثيرة ولا يبقى منها أثر. لكن بين الحين والحين تصل روح إلى روح، فيصير الكلام أهدأ، والوقت أخفّ. أنتِ من هذه الصدف القليلة التي تُشبه هدوء المساء بعد يوم طويل.</p>
+                <p>هناك فيكِ طيبة لا تُتعب أحدًا، وروح خفيفة تجعل المكان ألطف، وتفاصيل صغيرة ينتبه لها القلب قبل العين. أشياء لا تحتاج إلى شرح، فقط إلى تقدير.</p>
+                <p>لن أعدكِ بشيء أكبر من الصدق: كلمة طيبة، واحترام حاضر، وتقدير صادق، في كل مرة. هذه الصفحة ليست أكثر من هدية صغيرة، لكنها كُتبت بامتنان حقيقي لأنكِ موجودة.</p>
+              </div>
+
+              <p class="letter__sign">
+                <span>بكل الامتنان</span>
+                <span class="letter__sign-rule" aria-hidden="true"></span>
+              </p>
+            </article>
+          </div>
+
+          <div class="letter__actions">
+            <button class="letter__replay" id="letterReplay" type="button" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M4 10a8 8 0 1 1 2.3 6.3M4 10V4.5M4 10h5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              إعادة فتح الرسالة
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -389,6 +490,72 @@
       <div class="final__stars" aria-hidden="true"></div>
       <div class="shell final__inner">
         <h2 class="sr-only" id="final-title">الختام</h2>
+
+        <div class="rose-wrap" id="roseWrap" data-parallax="0.035">
+          <button class="rose-btn" id="roseBtn" type="button" aria-label="أعيدي تفتّح الوردة">
+            <svg class="rose" viewBox="0 0 220 310" focusable="false" aria-hidden="true">
+              <defs>
+                <radialGradient id="roseGlow" cx="50%" cy="45%" r="52%">
+                  <stop offset="0" class="st-rg1"/>
+                  <stop offset="1" class="st-rg2"/>
+                </radialGradient>
+                <linearGradient id="petalOuter" x1="0" y1="1" x2=".35" y2="0">
+                  <stop offset="0" class="st-pa3"/>
+                  <stop offset=".55" class="st-pa2"/>
+                  <stop offset="1" class="st-pa1"/>
+                </linearGradient>
+                <linearGradient id="petalMid" x1="0" y1="1" x2=".35" y2="0">
+                  <stop offset="0" class="st-pb3"/>
+                  <stop offset=".55" class="st-pb2"/>
+                  <stop offset="1" class="st-pb1"/>
+                </linearGradient>
+                <linearGradient id="petalInner" x1="0" y1="1" x2=".35" y2="0">
+                  <stop offset="0" class="st-pc3"/>
+                  <stop offset=".55" class="st-pc2"/>
+                  <stop offset="1" class="st-pc1"/>
+                </linearGradient>
+                <linearGradient id="stemGrad2" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0" class="st-stem1"/>
+                  <stop offset=".55" class="st-stem2"/>
+                  <stop offset="1" class="st-stem3"/>
+                </linearGradient>
+                <linearGradient id="leafGrad2" x1="0" y1="1" x2="1" y2="0">
+                  <stop offset="0" class="st-leaf1"/>
+                  <stop offset=".55" class="st-leaf2"/>
+                  <stop offset="1" class="st-leaf3"/>
+                </linearGradient>
+              </defs>
+
+              <circle class="rose__glow" cx="110" cy="104" r="88" fill="url(#roseGlow)"/>
+
+              <path class="rose__stem" d="M110 310 C 105 262 113 216 110 170" stroke="url(#stemGrad2)" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+              <path class="rose__leaf rose__leaf--l" d="M109 246 C 82 240 63 253 55 279 C 83 285 102 272 109 246 Z" fill="url(#leafGrad2)"/>
+              <path class="rose__leaf rose__leaf--r" d="M111 220 C 136 214 155 227 163 252 C 136 258 118 245 111 220 Z" fill="url(#leafGrad2)" opacity=".85"/>
+
+              <g transform="translate(110,112)">
+                <g class="petal" style="--i:0"><g transform="rotate(0)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalOuter)"/></g></g>
+                <g class="petal" style="--i:1"><g transform="rotate(72)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalOuter)"/></g></g>
+                <g class="petal" style="--i:2"><g transform="rotate(144)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalOuter)"/></g></g>
+                <g class="petal" style="--i:3"><g transform="rotate(216)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalOuter)"/></g></g>
+                <g class="petal" style="--i:4"><g transform="rotate(288)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalOuter)"/></g></g>
+
+                <g class="petal" style="--i:5"><g transform="rotate(36) scale(.74)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalMid)"/></g></g>
+                <g class="petal" style="--i:6"><g transform="rotate(108) scale(.74)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalMid)"/></g></g>
+                <g class="petal" style="--i:7"><g transform="rotate(180) scale(.74)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalMid)"/></g></g>
+                <g class="petal" style="--i:8"><g transform="rotate(252) scale(.74)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalMid)"/></g></g>
+
+                <g class="petal" style="--i:9"><g transform="rotate(10) scale(.52)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalInner)"/></g></g>
+                <g class="petal" style="--i:10"><g transform="rotate(130) scale(.52)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalInner)"/></g></g>
+                <g class="petal" style="--i:11"><g transform="rotate(250) scale(.52)"><path d="M0 8 C 30 2 47 -20 45 -50 C 43 -80 23 -97 0 -97 C -23 -97 -43 -80 -45 -50 C -47 -20 -30 2 0 8 Z" fill="url(#petalInner)"/></g></g>
+
+                <g class="rose__core">
+                  <circle r="17" fill="url(#petalInner)"/>
+                  <path d="M0 9 C 9 7 13 -2 9 -9 C 5 -15 -4 -14 -6 -8" fill="none" stroke="rgba(60,16,32,.5)" stroke-width="2" stroke-linecap="round"/>
+                </g>
+              </g>
+            </svg>
+          </button>
+        </div>
 
         <p class="kicker kicker--light reveal">
           <span class="kicker__num">٠٤</span>
@@ -409,14 +576,33 @@
 
         <p class="final__dedication reveal" style="--delay:520ms">
           إهداء إلى تقى مصطفى
-          <svg class="heart heart--svg" viewBox="0 0 32 30" aria-hidden="true" focusable="false"><path d="M16 27S2.7 18.7 2.7 10.9A6.9 6.9 0 0 1 16 7a6.9 6.9 0 0 1 13.3 3.9C29.3 18.7 16 27 16 27Z" fill="currentColor"/></svg>
+          <button class="heart-btn" id="heartBtn" type="button" aria-label="افرحي القلب">
+            <svg class="heart heart--svg" viewBox="0 0 32 30" aria-hidden="true" focusable="false"><path d="M16 27S2.7 18.7 2.7 10.9A6.9 6.9 0 0 1 16 7a6.9 6.9 0 0 1 13.3 3.9C29.3 18.7 16 27 16 27Z" fill="currentColor"/></svg>
+          </button>
         </p>
+
+        <div class="secret" id="secretBlock">
+          <button class="secret__btn" id="secretBtn" type="button" aria-expanded="false" aria-controls="secretLine">
+            <svg viewBox="0 0 32 30" aria-hidden="true" focusable="false"><path d="M16 27S2.7 18.7 2.7 10.9A6.9 6.9 0 0 1 16 7a6.9 6.9 0 0 1 13.3 3.9C29.3 18.7 16 27 16 27Z" fill="currentColor"/></svg>
+            <span class="secret__label">في حاجة كمان... دوسي هنا</span>
+          </button>
+          <p class="secret__line" id="secretLine" aria-hidden="true">وفي التفاصيل الصغيرة اللي محدش بيلاحظها... في حاجة جميلة بتشبهك.</p>
+        </div>
 
         <footer class="site-footer reveal" style="--delay:640ms">
           <a class="monogram monogram--footer" href="#top" aria-label="العودة إلى أعلى الصفحة">
             <span>ت</span><span class="monogram__dot" aria-hidden="true">·</span><span>م</span>
           </a>
           <p class="site-footer__note">صُنعت هذه الصفحة بامتنان · <span id="year">٢٠٢٦</span></p>
+          <button class="share-pill" data-share type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="6" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <circle cx="17.5" cy="5.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <circle cx="17.5" cy="18.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <path d="m8.3 10.8 6.9-4M8.3 13.2l6.9 4" stroke="currentColor" stroke-width="1.4"/>
+            </svg>
+            شاركي الهدية
+          </button>
           <a class="site-footer__top" href="#top">إلى الأعلى <span aria-hidden="true">↑</span></a>
         </footer>
       </div>
@@ -443,6 +629,7 @@
       main.setAttribute("aria-hidden", "true");
     })();
   </script>
+  <script src="./js/effects.js"></script>
   <script src="./js/app.js" defer></script>
 </body>
 </html>
